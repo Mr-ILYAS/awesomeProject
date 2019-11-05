@@ -51,7 +51,7 @@ func InitData() {
 
 	var entity Entity
 	for rows.Next() {
-		_ = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), &ErrMsg{}, false, db1, db2)
+		_ = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), &ErrMsg{}, false, DB, db2)
 		_ = runQuery(db2, fmt.Sprintf("INSERT INTO %s(id, text, date) VALUES($1, $2, $3);", tableName), false, entity.Id, entity.Text, entity.Date)
 	}
 }
