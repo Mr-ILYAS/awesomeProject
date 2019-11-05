@@ -27,22 +27,22 @@ type Entity struct {
 
 var Sequence int
 
-func NextId() int {
-	Sequence++
-	return Sequence
+func NextId() *int {
+	*&Sequence++
+	return &Sequence
 }
 func InitData() {
 	db1 := createDbConnection(db1Name)
 	defer db1.Close()
 	tableName := "public.t1"
 	table1 := []Entity{
-		{NextId(), "text1", time.Now().String()},
-		{NextId(), "text2", time.Now().Add(time.Hour * 24).String()},
+		{*NextId(), "text1", time.Now().String()},
+		{*NextId(), "text2", time.Now().Add(time.Hour * 24).String()},
 	}
 	initTable(db1, &tableName, &table1)
 
 	rows, err := db1.Query("SELECT * FROM " + tableName)
-	_ = tryCatch(err, ErrMsg{}, false, db1)
+	_ = tryCatch(err, &ErrMsg{}, false, db1)
 
 	db2 := createDbConnection(db2Name)
 	defer db2.Close()
@@ -51,7 +51,7 @@ func InitData() {
 
 	var entity Entity
 	for rows.Next() {
-		_ = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), ErrMsg{}, false, db1, db2)
+		_ = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), &ErrMsg{}, false, db1, db2)
 		_ = runQuery(db2, fmt.Sprintf("INSERT INTO %s(id, text, date) VALUES($1, $2, $3);", tableName), false, entity.Id, entity.Text, entity.Date)
 	}
 }
@@ -62,9 +62,9 @@ func main() {
 	defer db.Close()
 	query := "SELECT max(t1.id) FROM t1"
 	rows, err := db.Query(query)
-	_ = tryCatch(err, ErrMsg{"Error from query:\n" + query, nil, Default}, false, db)
+	_ = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, false, db)
 	if rows.Next() {
-		_ = tryCatch(rows.Scan(&Sequence), ErrMsg{}, false, db)
+		_ = tryCatch(rows.Scan(&Sequence), &ErrMsg{}, false, db)
 	}
 	r := mux.NewRouter()
 	r.HandleFunc("/entity", createEntity).Methods("POST")
@@ -89,7 +89,7 @@ func initTable(db *sql.DB, tableName *string, entities *[]Entity) {
 
 func runQuery(db *sql.DB, query string, throwUp bool, args ...interface{}) error {
 	_, err := db.Exec(query, args...)
-	err = tryCatch(err, ErrMsg{"Error from query:\n" + query, args, Representation}, throwUp, db)
+	err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, args, Representation}, throwUp, db)
 	if err == nil {
 		if args != nil {
 			query = fmt.Sprintf(query+"\t←—→\t %v", args)
@@ -104,8 +104,8 @@ func runQuery(db *sql.DB, query string, throwUp bool, args ...interface{}) error
 func createDbConnection(dbName string) *sql.DB {
 	dbName = fmt.Sprintf("dbname=%s", dbName)
 	db, err := sql.Open(dbDriver, fmt.Sprintf(connectionOptions+" %s", dbName))
-	_ = tryCatch(err, ErrMsg{}, false, db)
-	_ = tryCatch(db.Ping(), ErrMsg{}, false, db)
+	_ = tryCatch(err, &ErrMsg{}, false, db)
+	_ = tryCatch(db.Ping(), &ErrMsg{}, false, db)
 	return db
 }
 
@@ -116,7 +116,7 @@ func getEntities(writer http.ResponseWriter, request *http.Request) {
 	query := "SELECT * FROM t1"
 	rows, err := db.Query(query)
 	errMsg := ""
-	if err = tryCatch(err, ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
+	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -126,7 +126,7 @@ func getEntities(writer http.ResponseWriter, request *http.Request) {
 	var entity Entity
 	var entities []Entity
 	for rows.Next() {
-		if err = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), ErrMsg{}, true, db); err != nil {
+		if err = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), &ErrMsg{}, true, db); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -153,7 +153,7 @@ func getEntity(writer http.ResponseWriter, request *http.Request) {
 	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
 	rows, err := db.Query(query)
 	errMsg := ""
-	if err = tryCatch(err, ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
+	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -162,7 +162,7 @@ func getEntity(writer http.ResponseWriter, request *http.Request) {
 	fmt.Println(query)
 	var entity Entity
 	if rows.Next() {
-		if err = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), ErrMsg{}, true, db); err != nil {
+		if err = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), &ErrMsg{}, true, db); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -194,7 +194,7 @@ func createEntity(writer http.ResponseWriter, request *http.Request) {
 		println(errMsg)
 		return
 	}
-	entity.Id = NextId()
+	entity.Id = *NextId()
 	entity.Date = time.Now().String()
 	db := createDbConnection(db1Name)
 	defer db.Close()
@@ -223,7 +223,7 @@ func updateEntity(writer http.ResponseWriter, request *http.Request) {
 	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
 	rows, err := db.Query(query)
 	errMsg := ""
-	if err = tryCatch(err, ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
+	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -240,7 +240,7 @@ func updateEntity(writer http.ResponseWriter, request *http.Request) {
 	}
 	entity.Id = int(id)
 	if rows.Next() { //Обновить, если существует (дата создания не обновляется)
-		if err = tryCatch(rows.Scan(&entityOld.Id, &entityOld.Text, &entityOld.Date), ErrMsg{}, true, db); err != nil {
+		if err = tryCatch(rows.Scan(&entityOld.Id, &entityOld.Text, &entityOld.Date), &ErrMsg{}, true, db); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -280,7 +280,7 @@ func deleteEntity(writer http.ResponseWriter, request *http.Request) {
 	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
 	rows, err := db.Query(query)
 	errMsg := ""
-	if err = tryCatch(err, ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
+	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -301,7 +301,7 @@ func deleteEntity(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func tryCatch(err error, errMessage ErrMsg, throwUp bool, toClose ...*sql.DB) error {
+func tryCatch(err error, errMessage *ErrMsg, throwUp bool, toClose ...*sql.DB) error {
 	if err != nil {
 		for _, resource := range toClose {
 			resource.Close()
