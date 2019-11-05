@@ -27,27 +27,27 @@ type Entity struct {
 
 var Sequence int
 
+var DB *sql.DB
+
 func NextId() *int {
 	*&Sequence++
 	return &Sequence
 }
 func InitData() {
-	db1 := createDbConnection(db1Name)
-	defer db1.Close()
 	tableName := "public.t1"
 	table1 := []Entity{
 		{*NextId(), "text1", time.Now().String()},
 		{*NextId(), "text2", time.Now().Add(time.Hour * 24).String()},
 	}
-	initTable(db1, &tableName, &table1)
+	initTable(DB, &tableName, &table1)
 
-	rows, err := db1.Query("SELECT * FROM " + tableName)
-	_ = tryCatch(err, &ErrMsg{}, false, db1)
+	rows, err := DB.Query("SELECT * FROM " + tableName)
+	_ = tryCatch(err, &ErrMsg{}, false, DB)
 
 	db2 := createDbConnection(db2Name)
 	defer db2.Close()
 	tableName = "public.t2"
-	initTable(createDbConnection(db2Name), &tableName, nil)
+	initTable(db2, &tableName, nil)
 
 	var entity Entity
 	for rows.Next() {
@@ -57,14 +57,14 @@ func InitData() {
 }
 
 func main() {
-	//InitData() //tables init and their data create
-	db := createDbConnection(db1Name)
-	defer db.Close()
+	DB = createDbConnection(db1Name)
+	InitData() //tables init and their data create
+	defer DB.Close()
 	query := "SELECT max(t1.id) FROM t1"
-	rows, err := db.Query(query)
-	_ = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, false, db)
+	rows, err := DB.Query(query)
+	_ = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, false, DB)
 	if rows.Next() {
-		_ = tryCatch(rows.Scan(&Sequence), &ErrMsg{}, false, db)
+		_ = tryCatch(rows.Scan(&Sequence), &ErrMsg{}, false, DB)
 	}
 	r := mux.NewRouter()
 	r.HandleFunc("/entity", createEntity).Methods("POST")
@@ -111,12 +111,10 @@ func createDbConnection(dbName string) *sql.DB {
 
 func getEntities(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
-	db := createDbConnection(db1Name)
-	defer db.Close()
 	query := "SELECT * FROM t1"
-	rows, err := db.Query(query)
+	rows, err := DB.Query(query)
 	errMsg := ""
-	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
+	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, DB); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -126,7 +124,7 @@ func getEntities(writer http.ResponseWriter, request *http.Request) {
 	var entity Entity
 	var entities []Entity
 	for rows.Next() {
-		if err = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), &ErrMsg{}, true, db); err != nil {
+		if err = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), &ErrMsg{}, true, DB); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -147,13 +145,11 @@ func getEntities(writer http.ResponseWriter, request *http.Request) {
 
 func getEntity(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
-	db := createDbConnection(db1Name)
-	defer db.Close()
 	id, _ := strconv.ParseInt(mux.Vars(request)["id"], 10, 0)
 	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
-	rows, err := db.Query(query)
+	rows, err := DB.Query(query)
 	errMsg := ""
-	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
+	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, DB); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -162,7 +158,7 @@ func getEntity(writer http.ResponseWriter, request *http.Request) {
 	fmt.Println(query)
 	var entity Entity
 	if rows.Next() {
-		if err = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), &ErrMsg{}, true, db); err != nil {
+		if err = tryCatch(rows.Scan(&entity.Id, &entity.Text, &entity.Date), &ErrMsg{}, true, DB); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -182,8 +178,6 @@ func getEntity(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-//TODO: transactional ↓
-
 func createEntity(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 	errMsg := ""
@@ -196,9 +190,7 @@ func createEntity(writer http.ResponseWriter, request *http.Request) {
 	}
 	entity.Id = *NextId()
 	entity.Date = time.Now().String()
-	db := createDbConnection(db1Name)
-	defer db.Close()
-	if err := runQuery(db, "INSERT INTO t1(id, text, date) VALUES($1, $2, $3);", true, entity.Id, entity.Text, entity.Date); err != nil {
+	if err := runQuery(DB, "INSERT INTO t1(id, text, date) VALUES($1, $2, $3);", true, entity.Id, entity.Text, entity.Date); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -217,13 +209,11 @@ func createEntity(writer http.ResponseWriter, request *http.Request) {
 
 func updateEntity(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
-	db := createDbConnection(db1Name)
-	defer db.Close()
 	id, _ := strconv.ParseInt(mux.Vars(request)["id"], 10, 0)
 	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
-	rows, err := db.Query(query)
+	rows, err := DB.Query(query)
 	errMsg := ""
-	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
+	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, DB); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -240,7 +230,7 @@ func updateEntity(writer http.ResponseWriter, request *http.Request) {
 	}
 	entity.Id = int(id)
 	if rows.Next() { //Обновить, если существует (дата создания не обновляется)
-		if err = tryCatch(rows.Scan(&entityOld.Id, &entityOld.Text, &entityOld.Date), &ErrMsg{}, true, db); err != nil {
+		if err = tryCatch(rows.Scan(&entityOld.Id, &entityOld.Text, &entityOld.Date), &ErrMsg{}, true, DB); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -248,7 +238,7 @@ func updateEntity(writer http.ResponseWriter, request *http.Request) {
 		}
 		fmt.Printf("%#v\n", entityOld)
 		entity.Date = entityOld.Date
-		if err := runQuery(db, "UPDATE t1 SET text=$2 where id=$1;", true, id, entity.Text); err != nil {
+		if err := runQuery(DB, "UPDATE t1 SET text=$2 where id=$1;", true, id, entity.Text); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -256,7 +246,7 @@ func updateEntity(writer http.ResponseWriter, request *http.Request) {
 		}
 	} else { //Иначе создать новую запись
 		entity.Date = time.Now().String()
-		if err := runQuery(db, "INSERT INTO t1(id, text, date) VALUES($1, $2, $3);", true, entity.Id, entity.Text, entity.Date); err != nil {
+		if err := runQuery(DB, "INSERT INTO t1(id, text, date) VALUES($1, $2, $3);", true, entity.Id, entity.Text, entity.Date); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -274,13 +264,11 @@ func updateEntity(writer http.ResponseWriter, request *http.Request) {
 }
 
 func deleteEntity(writer http.ResponseWriter, request *http.Request) {
-	db := createDbConnection(db1Name)
-	defer db.Close()
 	id, _ := strconv.ParseInt(mux.Vars(request)["id"], 10, 0)
 	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
-	rows, err := db.Query(query)
+	rows, err := DB.Query(query)
 	errMsg := ""
-	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
+	if err = tryCatch(err, &ErrMsg{"Error from query:\n" + query, nil, Default}, true, DB); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -288,7 +276,7 @@ func deleteEntity(writer http.ResponseWriter, request *http.Request) {
 	}
 	fmt.Println(query)
 	if rows.Next() {
-		if err := runQuery(db, "DELETE FROM t1 WHERE id=$1;", true, id); err != nil {
+		if err := runQuery(DB, "DELETE FROM t1 WHERE id=$1;", true, id); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -303,9 +291,6 @@ func deleteEntity(writer http.ResponseWriter, request *http.Request) {
 
 func tryCatch(err error, errMessage *ErrMsg, throwUp bool, toClose ...*sql.DB) error {
 	if err != nil {
-		for _, resource := range toClose {
-			resource.Close()
-		}
 		if errMessage.message != "" {
 			message := errMessage.message
 			if errMessage.args != nil {
@@ -315,6 +300,9 @@ func tryCatch(err error, errMessage *ErrMsg, throwUp bool, toClose ...*sql.DB) e
 		}
 		println()
 		if !throwUp {
+			for _, resource := range toClose {
+				resource.Close()
+			}
 			panic(err)
 		}
 		return err
