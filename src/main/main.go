@@ -3,11 +3,8 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	_ "encoding/json"
-	_ "flag"
 	"fmt"
 	"github.com/gorilla/mux"
-	_ "github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
@@ -118,7 +115,7 @@ func getEntities(writer http.ResponseWriter, request *http.Request) {
 	defer db.Close()
 	query := "SELECT * FROM t1"
 	rows, err := db.Query(query)
-	errMsg := "Error on marshal entities."
+	errMsg := ""
 	if err = tryCatch(err, ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
@@ -140,6 +137,7 @@ func getEntities(writer http.ResponseWriter, request *http.Request) {
 	}
 	jsonEntities, err := json.Marshal(entities)
 	if err != nil {
+		errMsg = "Error on marshal entities."
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 	} else {
 		jsonResponse := append([]byte{'d', 'a', 't', 'a', ':'}, jsonEntities...)
@@ -154,7 +152,7 @@ func getEntity(writer http.ResponseWriter, request *http.Request) {
 	id, _ := strconv.ParseInt(mux.Vars(request)["id"], 10, 0)
 	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
 	rows, err := db.Query(query)
-	errMsg := "Bad request. Invalid parameter: id"
+	errMsg := ""
 	if err = tryCatch(err, ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
@@ -179,6 +177,7 @@ func getEntity(writer http.ResponseWriter, request *http.Request) {
 			_, _ = writer.Write(jsonResponse)
 		}
 	} else {
+		errMsg = "Bad request. Invalid parameter: id"
 		http.Error(writer, errMsg, http.StatusBadRequest)
 	}
 }
@@ -187,7 +186,7 @@ func getEntity(writer http.ResponseWriter, request *http.Request) {
 
 func createEntity(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
-	errMsg := "Error on marshal entity."
+	errMsg := ""
 	var entity Entity
 	if err := json.NewDecoder(request.Body).Decode(&entity); err != nil {
 		errMsg = err.Error()
@@ -207,6 +206,7 @@ func createEntity(writer http.ResponseWriter, request *http.Request) {
 	}
 	jsonEntity, err := json.Marshal(entity)
 	if err != nil {
+		errMsg = "Error on marshal entity."
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 	} else {
 		jsonResponse := append([]byte{'d', 'a', 't', 'a', ':'}, jsonEntity...)
@@ -279,7 +279,7 @@ func deleteEntity(writer http.ResponseWriter, request *http.Request) {
 	id, _ := strconv.ParseInt(mux.Vars(request)["id"], 10, 0)
 	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
 	rows, err := db.Query(query)
-	errMsg := "Bad request. Invalid parameter: id"
+	errMsg := ""
 	if err = tryCatch(err, ErrMsg{"Error from query:\n" + query, nil, Default}, true, db); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
@@ -296,6 +296,7 @@ func deleteEntity(writer http.ResponseWriter, request *http.Request) {
 		}
 		writer.WriteHeader(http.StatusNoContent)
 	} else {
+		errMsg = "Bad request. Invalid parameter: id"
 		http.Error(writer, errMsg, http.StatusBadRequest)
 	}
 }
