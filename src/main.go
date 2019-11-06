@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	model.DB = common.CreateDbConnection(model.DB1Name)
+	model.DB = common.CreateDbConnection(model.DB1Name, model.DbDriver, model.ConnectionOptions)
 	model.InitData() //tables init and their data create
 	defer model.DB.Close()
 	query := "SELECT max(t1.id) FROM t1"

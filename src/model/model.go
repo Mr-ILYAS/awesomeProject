@@ -40,7 +40,7 @@ func InitData() {
 	rows, err := DB.Query("SELECT * FROM " + tableName)
 	_ = common.TryCatch(err, &common.ErrMsg{}, false, DB)
 
-	db2 := common.CreateDbConnection(DB2Name)
+	db2 := common.CreateDbConnection(DB2Name, DbDriver, ConnectionOptions)
 	defer db2.Close()
 	tableName = "public.t2"
 	InitTable(db2, &tableName, nil)

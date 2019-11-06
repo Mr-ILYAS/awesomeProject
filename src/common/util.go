@@ -1,7 +1,6 @@
 package common
 
 import (
-	"awesomeProject/src/model"
 	"database/sql"
 	"fmt"
 )
@@ -59,9 +58,9 @@ func RunQuery(db *sql.DB, query string, throwUp bool, args ...interface{}) error
 	}
 }
 
-func CreateDbConnection(dbName string) *sql.DB {
+func CreateDbConnection(dbName string, driver string, connectionOptions string) *sql.DB {
 	dbName = fmt.Sprintf("dbname=%s", dbName)
-	db, err := sql.Open(model.DbDriver, fmt.Sprintf(model.ConnectionOptions+" %s", dbName))
+	db, err := sql.Open(driver, fmt.Sprintf(connectionOptions+" %s", dbName))
 	_ = TryCatch(err, &ErrMsg{}, false)
 	_ = TryCatch(db.Ping(), &ErrMsg{}, false, db)
 	return db
