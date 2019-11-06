@@ -46,7 +46,7 @@ func TryCatch(err error, errMessage *ErrMsg, throwUp bool, toClose ...*sql.DB) e
 
 func RunQuery(db *sql.DB, query string, throwUp bool, args ...interface{}) error {
 	_, err := db.Exec(query, args...)
-	err = TryCatch(err, &ErrMsg{"Error from query:\n" + query, args, Representation}, throwUp, db)
+	err = TryCatch(err, &ErrMsg{Message: "Error from query:\n" + query, Args: args, ArgsViewType: Representation}, throwUp, db)
 	if err == nil {
 		if args != nil {
 			query = fmt.Sprintf(query+"\t←—→\t %v", args)

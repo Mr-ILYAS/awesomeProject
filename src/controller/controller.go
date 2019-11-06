@@ -16,7 +16,7 @@ func GetEntities(writer http.ResponseWriter, request *http.Request) {
 	query := fmt.Sprintf("SELECT * FROM %s", model.Table1)
 	rows, err := model.DB.Query(query)
 	errMsg := ""
-	if err = common.TryCatch(err, &common.ErrMsg{"Error from query:\n" + query, nil, common.Default}, true, model.DB); err != nil {
+	if err = common.TryCatch(err, &common.ErrMsg{Message: "Error from query:\n" + query, ArgsViewType: common.Default}, true, model.DB); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -51,7 +51,7 @@ func GetEntity(writer http.ResponseWriter, request *http.Request) {
 	query := fmt.Sprintf("SELECT * FROM %s WHERE id=%d", model.Table1, id)
 	rows, err := model.DB.Query(query)
 	errMsg := ""
-	if err = common.TryCatch(err, &common.ErrMsg{"Error from query:\n" + query, nil, common.Default}, true, model.DB); err != nil {
+	if err = common.TryCatch(err, &common.ErrMsg{Message: "Error from query:\n" + query, ArgsViewType: common.Default}, true, model.DB); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -115,7 +115,7 @@ func UpdateEntity(writer http.ResponseWriter, request *http.Request) {
 	query := fmt.Sprintf("SELECT * FROM %s WHERE id=%d", model.Table1, id)
 	rows, err := model.DB.Query(query)
 	errMsg := ""
-	if err = common.TryCatch(err, &common.ErrMsg{"Error from query:\n" + query, nil, common.Default}, true, model.DB); err != nil {
+	if err = common.TryCatch(err, &common.ErrMsg{Message: "Error from query:\n" + query, ArgsViewType: common.Default}, true, model.DB); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -170,7 +170,7 @@ func DeleteEntity(writer http.ResponseWriter, request *http.Request) {
 	query := fmt.Sprintf("SELECT * FROM %s WHERE id=%d", model.Table1, id)
 	rows, err := model.DB.Query(query)
 	errMsg := ""
-	if err = common.TryCatch(err, &common.ErrMsg{"Error from query:\n" + query, nil, common.Default}, true, model.DB); err != nil {
+	if err = common.TryCatch(err, &common.ErrMsg{Message: "Error from query:\n" + query, ArgsViewType: common.Default}, true, model.DB); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)

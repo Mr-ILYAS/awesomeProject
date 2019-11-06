@@ -17,7 +17,7 @@ func main() {
 	defer model.DB.Close()
 	query := fmt.Sprintf("SELECT max(t.id) FROM %s t", model.Table1)
 	rows, err := model.DB.Query(query)
-	_ = common.TryCatch(err, &common.ErrMsg{"Error from query:\n" + query, nil, common.Default}, false, model.DB)
+	_ = common.TryCatch(err, &common.ErrMsg{Message: "Error from query:\n" + query, ArgsViewType: common.Default}, false, model.DB)
 	if rows.Next() {
 		_ = common.TryCatch(rows.Scan(&model.Sequence), &common.ErrMsg{}, false, model.DB)
 	}
