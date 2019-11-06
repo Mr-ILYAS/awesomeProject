@@ -4,6 +4,7 @@ import (
 	"awesomeProject/src/common"
 	"awesomeProject/src/controller"
 	"awesomeProject/src/model"
+	"fmt"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 	"log"
@@ -14,7 +15,7 @@ func main() {
 	model.DB = common.CreateDbConnection(model.DB1Name, model.DbDriver, model.ConnectionOptions)
 	model.InitData() //tables init and their data create
 	defer model.DB.Close()
-	query := "SELECT max(t1.id) FROM t1"
+	query := fmt.Sprintf("SELECT max(t.id) FROM %s t", model.Table1)
 	rows, err := model.DB.Query(query)
 	_ = common.TryCatch(err, &common.ErrMsg{"Error from query:\n" + query, nil, common.Default}, false, model.DB)
 	if rows.Next() {

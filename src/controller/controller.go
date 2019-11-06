@@ -13,7 +13,7 @@ import (
 
 func GetEntities(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
-	query := "SELECT * FROM t1"
+	query := fmt.Sprintf("SELECT * FROM %s", model.Table1)
 	rows, err := model.DB.Query(query)
 	errMsg := ""
 	if err = common.TryCatch(err, &common.ErrMsg{"Error from query:\n" + query, nil, common.Default}, true, model.DB); err != nil {
@@ -48,7 +48,7 @@ func GetEntities(writer http.ResponseWriter, request *http.Request) {
 func GetEntity(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 	id, _ := strconv.ParseInt(mux.Vars(request)["id"], 10, 0)
-	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE id=%d", model.Table1, id)
 	rows, err := model.DB.Query(query)
 	errMsg := ""
 	if err = common.TryCatch(err, &common.ErrMsg{"Error from query:\n" + query, nil, common.Default}, true, model.DB); err != nil {
@@ -90,9 +90,9 @@ func CreateEntity(writer http.ResponseWriter, request *http.Request) {
 		println(errMsg)
 		return
 	}
-	entity.Id = *model.NextId()
+	entity.Id = model.NextId()
 	entity.Date = time.Now().String()
-	if err := common.RunQuery(model.DB, "INSERT INTO t1(id, text, date) VALUES($1, $2, $3);", true, entity.Id, entity.Text, entity.Date); err != nil {
+	if err := common.RunQuery(model.DB, fmt.Sprintf("INSERT INTO %s(id, text, date) VALUES($1, $2, $3);", model.Table1), true, entity.Id, entity.Text, entity.Date); err != nil {
 		errMsg = err.Error()
 		http.Error(writer, errMsg, http.StatusInternalServerError)
 		println(errMsg)
@@ -112,7 +112,7 @@ func CreateEntity(writer http.ResponseWriter, request *http.Request) {
 func UpdateEntity(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 	id, _ := strconv.ParseInt(mux.Vars(request)["id"], 10, 0)
-	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE id=%d", model.Table1, id)
 	rows, err := model.DB.Query(query)
 	errMsg := ""
 	if err = common.TryCatch(err, &common.ErrMsg{"Error from query:\n" + query, nil, common.Default}, true, model.DB); err != nil {
@@ -140,7 +140,7 @@ func UpdateEntity(writer http.ResponseWriter, request *http.Request) {
 		}
 		fmt.Printf("%#v\n", entityOld)
 		entity.Date = entityOld.Date
-		if err := common.RunQuery(model.DB, "UPDATE t1 SET text=$2 where id=$1;", true, id, entity.Text); err != nil {
+		if err := common.RunQuery(model.DB, fmt.Sprintf("UPDATE %s SET text=$2 where id=$1;", model.Table1), true, id, entity.Text); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -148,7 +148,7 @@ func UpdateEntity(writer http.ResponseWriter, request *http.Request) {
 		}
 	} else { //Иначе создать новую запись
 		entity.Date = time.Now().String()
-		if err := common.RunQuery(model.DB, "INSERT INTO t1(id, text, date) VALUES($1, $2, $3);", true, entity.Id, entity.Text, entity.Date); err != nil {
+		if err := common.RunQuery(model.DB, fmt.Sprintf("INSERT INTO %s(id, text, date) VALUES($1, $2, $3);", model.Table1), true, entity.Id, entity.Text, entity.Date); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
@@ -167,7 +167,7 @@ func UpdateEntity(writer http.ResponseWriter, request *http.Request) {
 
 func DeleteEntity(writer http.ResponseWriter, request *http.Request) {
 	id, _ := strconv.ParseInt(mux.Vars(request)["id"], 10, 0)
-	query := fmt.Sprintf("SELECT * FROM t1 WHERE id=%d", id)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE id=%d", model.Table1, id)
 	rows, err := model.DB.Query(query)
 	errMsg := ""
 	if err = common.TryCatch(err, &common.ErrMsg{"Error from query:\n" + query, nil, common.Default}, true, model.DB); err != nil {
@@ -178,7 +178,7 @@ func DeleteEntity(writer http.ResponseWriter, request *http.Request) {
 	}
 	fmt.Println(query)
 	if rows.Next() {
-		if err := common.RunQuery(model.DB, "DELETE FROM t1 WHERE id=$1;", true, id); err != nil {
+		if err := common.RunQuery(model.DB, fmt.Sprintf("DELETE FROM %s WHERE id=$1;", model.Table1), true, id); err != nil {
 			errMsg = err.Error()
 			http.Error(writer, errMsg, http.StatusInternalServerError)
 			println(errMsg)
